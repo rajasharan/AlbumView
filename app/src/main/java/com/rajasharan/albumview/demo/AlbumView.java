@@ -62,7 +62,7 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
     private static final int WHAT_LOAD_IMAGE = 0;
     private static final int WHAT_SHOW_IMAGE = 1;
 
-    private static final float FULL_ANGLE = 220.0f;
+    private static final float FULL_ANGLE = 180.0f;
     private static final float FLIP_ANGLE = 70.0f;
     private static final float REVERSE_FLIP_ANGLE = FLIP_ANGLE - 180.0f;
     private static float MAX_WIDTH;
@@ -149,7 +149,8 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
 
             if (files != null) {
                 for (String file : files) {
-                    mImagePaths.add(file);
+                    String img = dir + "/" + file;
+                    mImagePaths.add(img);
                 }
             }
         }
@@ -158,27 +159,6 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
 
     public void show() {
         getViewTreeObserver().addOnGlobalLayoutListener(this);
-    }
-
-    private Bitmap createBitmap(String path) {
-        mOptions.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(path, mOptions);
-        int imgWidth = mOptions.outWidth;
-        int imgHeight = mOptions.outHeight;
-
-        mOptions.inJustDecodeBounds = false;
-        mOptions.inSampleSize = calculateSampleSize(imgWidth, imgHeight);
-        return BitmapFactory.decodeFile(path, mOptions);
-    }
-
-    private int calculateSampleSize(int imgWidth, int imgHeight) {
-        int inSampleSize = 1;
-        int imgSize = imgWidth > imgHeight? imgWidth: imgHeight;
-        int screenSize = imgWidth > imgHeight? mScreen.x: mScreen.y;
-        while (imgSize / inSampleSize > screenSize) {
-            inSampleSize = inSampleSize * 2;
-        }
-        return inSampleSize;
     }
 
     @Override
@@ -218,7 +198,7 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
             mCurrentIndex = forward? mCurrentIndex + 1 : mCurrentIndex - 1;
             mCurrentIndex = mCurrentIndex >= mImagePaths.size()? 0 : mCurrentIndex;
             mCurrentIndex = mCurrentIndex < 0? mImagePaths.size() - 1 : mCurrentIndex;
-            Log.d(TAG, String.format("requestImage: %s", mCurrentIndex));
+            Log.d(TAG, String.format("requestImage: index - %s", mCurrentIndex));
 
             Message msg = mBackgroundHandler.obtainMessage(WHAT_LOAD_IMAGE, (int) frameWidth, (int) frameHeight, mImagePaths.get(mCurrentIndex));
             mBackgroundHandler.sendMessage(msg);
@@ -232,24 +212,6 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
 
     private void requestPreviousImage() {
         requestImage(false, mFrameRect.width(), mFrameRect.height());
-    }
-
-    private Bitmap createScaledBitmap(Bitmap bitmap, int frameWidth, int frameHeight) {
-        RectF src = new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight());
-        RectF dst = new RectF(0, 0, frameWidth, frameHeight);
-        Matrix matrix = new Matrix();
-        matrix.setRectToRect(src, dst, Matrix.ScaleToFit.CENTER);
-        Bitmap scaledBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-
-        /*Bitmap scaledBitmap = Bitmap.createBitmap((int)mFrameRect.width(), (int)mFrameRect.height(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(scaledBitmap);
-        float aspectRatio = (mBitmap.getWidth() * 1.0f) / (mBitmap.getHeight() * 1.0f);
-
-        Rect dst = new Rect(0, 0, (int)(mFrameRect.height() * aspectRatio), (int)mFrameRect.height());
-        canvas.drawBitmap(mBitmap, null, dst, new Paint(Paint.FILTER_BITMAP_FLAG));
-        mBitmap = scaledBitmap;*/
-
-        return scaledBitmap;
     }
 
     private void rotate() {
@@ -311,7 +273,6 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 startTouch(x, y);
-                requestNextImage();
                 break;
             case MotionEvent.ACTION_MOVE:
                 if (mViewFlipped) {
@@ -319,6 +280,12 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
                     mViewFlipped = false;
                 }
                 mSwipeDistance = x - mStartTouch.x;
+                if (mSwipeDistance < 0) {
+                    requestPreviousImage();
+                }
+                else {
+                    requestNextImage();
+                }
                 rotate();
                 break;
             case MotionEvent.ACTION_UP:
@@ -373,5 +340,49 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
                 return true;
         }
         return false;
+    }
+
+    private Bitmap createScaledBitmap(Bitmap bitmap, int frameWidth, int frameHeight) {
+        if (bitmap != null) {
+            RectF src = new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight());
+            RectF dst = new RectF(0, 0, frameWidth, frameHeight);
+            Matrix matrix = new Matrix();
+            matrix.setRectToRect(src, dst, Matrix.ScaleToFit.CENTER);
+            Bitmap scaledBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+
+            /*Bitmap scaledBitmap = Bitmap.createBitmap((int)mFrameRect.width(), (int)mFrameRect.height(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(scaledBitmap);
+            float aspectRatio = (mBitmap.getWidth() * 1.0f) / (mBitmap.getHeight() * 1.0f);
+
+            Rect dst = new Rect(0, 0, (int)(mFrameRect.height() * aspectRatio), (int)mFrameRect.height());
+            canvas.drawBitmap(mBitmap, null, dst, new Paint(Paint.FILTER_BITMAP_FLAG));
+            mBitmap = scaledBitmap;*/
+
+            return scaledBitmap;
+        }
+        return null;
+    }
+
+    private Bitmap createBitmap(String path) {
+        mOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(path, mOptions);
+        int imgWidth = mOptions.outWidth;
+        int imgHeight = mOptions.outHeight;
+
+        mOptions.inJustDecodeBounds = false;
+        mOptions.inSampleSize = calculateSampleSize(imgWidth, imgHeight);
+        Bitmap bitmap = BitmapFactory.decodeFile(path, mOptions);
+        Log.d(TAG, String.format("createBitmap: %s, path: %s, %s", bitmap, path, Thread.currentThread().getName()));
+        return bitmap;
+    }
+
+    private int calculateSampleSize(int imgWidth, int imgHeight) {
+        int inSampleSize = 1;
+        int imgSize = imgWidth > imgHeight? imgWidth: imgHeight;
+        int screenSize = imgWidth > imgHeight? mScreen.x: mScreen.y;
+        while (imgSize / inSampleSize > screenSize) {
+            inSampleSize = inSampleSize * 2;
+        }
+        return inSampleSize;
     }
 }
