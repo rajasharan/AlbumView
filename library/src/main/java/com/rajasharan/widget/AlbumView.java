@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package com.rajasharan.albumview.demo;
+package com.rajasharan.widget;
 
 import android.content.Context;
 import android.graphics.Bitmap;

@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <com.rajasharan.albumview.demo.AlbumView
+    <com.rajasharan.widget.AlbumView
         android:id="@+id/album"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

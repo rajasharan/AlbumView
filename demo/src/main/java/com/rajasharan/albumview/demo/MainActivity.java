@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 
+import com.rajasharan.widget.AlbumView;
+
 public class MainActivity extends AppCompatActivity {
     static final String TAG = "MainActivity";
 
