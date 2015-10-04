@@ -25,14 +25,17 @@
 package com.rajasharan.widget;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Camera;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Point;
 import android.graphics.PointF;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Region;
 import android.os.Build;
@@ -65,7 +68,11 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
     private static final float FULL_ANGLE = 180.0f;
     private static final float FLIP_ANGLE = 70.0f;
     private static final float REVERSE_FLIP_ANGLE = FLIP_ANGLE - 180.0f;
+
     private static float MAX_WIDTH;
+    private static Paint BITMAP_PAINT;
+    private static int ACTION_BAR_SIZE;
+    private static Rect DST_RECT;
 
     private Path mPath;
     private RectF mFrameRect;
@@ -104,7 +111,14 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
         WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         mScreen = new Point();
         wm.getDefaultDisplay().getSize(mScreen);
+
         MAX_WIDTH = mScreen.x;
+        BITMAP_PAINT = new Paint(Paint.FILTER_BITMAP_FLAG);
+        DST_RECT = new Rect();
+
+        final TypedArray styledAttributes = context.getTheme().obtainStyledAttributes(new int[] {android.R.attr.actionBarSize});
+        ACTION_BAR_SIZE = (int) styledAttributes.getDimension(0, 0);
+        styledAttributes.recycle();
 
         mPath = new Path();
         mPath.setFillType(Path.FillType.EVEN_ODD);
@@ -344,20 +358,33 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
 
     private Bitmap createScaledBitmap(Bitmap bitmap, int frameWidth, int frameHeight) {
         if (bitmap != null) {
+            /*
             RectF src = new RectF(0, 0, bitmap.getWidth(), bitmap.getHeight());
             RectF dst = new RectF(0, 0, frameWidth, frameHeight);
             Matrix matrix = new Matrix();
             matrix.setRectToRect(src, dst, Matrix.ScaleToFit.CENTER);
             Bitmap scaledBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+            */
 
-            /*Bitmap scaledBitmap = Bitmap.createBitmap((int)mFrameRect.width(), (int)mFrameRect.height(), Bitmap.Config.ARGB_8888);
+            Bitmap scaledBitmap = Bitmap.createBitmap(frameWidth, frameHeight, Bitmap.Config.ARGB_8888);
             Canvas canvas = new Canvas(scaledBitmap);
-            float aspectRatio = (mBitmap.getWidth() * 1.0f) / (mBitmap.getHeight() * 1.0f);
+            float aspectRatio = (bitmap.getWidth() * 1.0f) / (bitmap.getHeight() * 1.0f);
 
-            Rect dst = new Rect(0, 0, (int)(mFrameRect.height() * aspectRatio), (int)mFrameRect.height());
-            canvas.drawBitmap(mBitmap, null, dst, new Paint(Paint.FILTER_BITMAP_FLAG));
-            mBitmap = scaledBitmap;*/
-
+            if (aspectRatio < 1) {
+                int _w = (int) (frameHeight * aspectRatio);
+                int disp = (frameWidth - _w)/2;
+                //Log.d(TAG, String.format("displacement: %s, aspectRatio: %s", disp, aspectRatio));
+                DST_RECT.set(0 + disp, 0, _w + disp, frameHeight);
+                canvas.drawBitmap(bitmap, null, DST_RECT, BITMAP_PAINT);
+            }
+            else {
+                int _h = (int) (frameWidth / aspectRatio);
+                int disp = (frameHeight - _h) / 2 - ACTION_BAR_SIZE;
+                //Log.d(TAG, String.format("displacement: %s, aspectRatio: %s", disp, aspectRatio));
+                DST_RECT.set(0, 0 + disp, frameWidth, _h + disp);
+                canvas.drawBitmap(bitmap, null, DST_RECT, BITMAP_PAINT);
+            }
+            bitmap.recycle();
             return scaledBitmap;
         }
         return null;
@@ -372,7 +399,7 @@ public class AlbumView extends View implements Handler.Callback, ViewTreeObserve
         mOptions.inJustDecodeBounds = false;
         mOptions.inSampleSize = calculateSampleSize(imgWidth, imgHeight);
         Bitmap bitmap = BitmapFactory.decodeFile(path, mOptions);
-        Log.d(TAG, String.format("createBitmap: %s, path: %s, %s", bitmap, path, Thread.currentThread().getName()));
+        //Log.d(TAG, String.format("createBitmap: %s, path: %s, %s", bitmap, path, Thread.currentThread().getName()));
         return bitmap;
     }
 
